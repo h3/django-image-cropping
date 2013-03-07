@@ -7,6 +7,7 @@ from django.contrib.admin.widgets import AdminFileWidget, ForeignKeyRawIdWidget
 from django.conf import settings
 
 from easy_thumbnails.files import get_thumbnailer
+from easy_thumbnails.exceptions import InvalidImageFormatError
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,11 @@ def thumbnail(image_path):
         'detail': True,
         'size': getattr(settings, 'IMAGE_CROPPING_THUMB_SIZE', (300, 300)),
     }
-    thumb = thumbnailer.get_thumbnail(thumbnail_options)
-    return thumb.url
-
+    try:
+        return thumbnailer.get_thumbnail(thumbnail_options).url
+    except InvalidImageFormatError:
+        return image_path
+        
 
 def get_attrs(image, name):
     try:
@@ -30,6 +33,10 @@ def get_attrs(image, name):
             'data-org-width': image.width,
             'data-org-height': image.height,
         }
+    except IOError:
+        # image not found on disk 
+        # TODO: being able to show a custom 404 image here could be nice
+        return {}
     except ValueError:
         # can't create thumbnail from image
         return {}
